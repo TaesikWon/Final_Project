@@ -1,0 +1,53 @@
+# ======================
+# Python / FastAPI
+# ======================
+
+# Virtual environment
+venv/
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# FastAPI temp files
+*.log
+
+# ======================
+# Node.js / React / Vite
+# ======================
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+
+# Yarn / npm logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# Project Data (비공개 데이터)
+# ======================
+
+raw_data/
+processed_data/
+
+# 모델/임베딩 파일 (Optional)
+backend/embeddings/
+
+# ======================
+# OS / IDE
+# ======================
+
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
