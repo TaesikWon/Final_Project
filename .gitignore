@@ -5,6 +5,7 @@
 # Virtual environment
 venv/
 .env
+*.env
 
 # Python cache
 __pycache__/
@@ -12,8 +13,26 @@ __pycache__/
 *.pyo
 *.pyd
 
-# FastAPI temp files
+# Logs
 *.log
+
+# Local data artifacts
+*.sqlite*
+*.db*
+*.bin
+*.jsonl
+
+# Vector DB (ChromaDB)
+**/vector_db/
+backend/rag/vector_db/
+rag/vector_db/
+
+# Embeddings / Models
+backend/embeddings/
+**/embeddings/
+*.pt
+*.model
+*.h5
 
 # ======================
 # Node.js / React / Vite
@@ -30,24 +49,37 @@ yarn-debug.log*
 yarn-error.log*
 
 # ======================
-# Project Data (비공개 데이터)
+# Project Data (민감/비공개)
 # ======================
 
 raw_data/
 processed_data/
-
-# 모델/임베딩 파일 (Optional)
-backend/embeddings/
+data/
+backend/data/
+datasets/
+uploads/
 
 # ======================
 # OS / IDE
 # ======================
 
+# macOS
 .DS_Store
+
+# Windows
 Thumbs.db
 
 # VSCode
 .vscode/
 
-# PyCharm
+# PyCharm / IntelliJ
 .idea/
+
+# ======================
+# Temporary Files
+# ======================
+
+*.tmp
+*.temp
+*.cache
+.cache/
