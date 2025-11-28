@@ -1,83 +1,100 @@
-# ======================
+############################################
 # Python / FastAPI
-# ======================
+############################################
 
-# Virtual environment
+# Virtual environments
 venv/
-.env
-*.env
+.venv/
+env/
+ENV/
 
 # Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+
+# Environment variables (절대 공개 금지)
+.env
+*.env
 
 # Logs
 *.log
 
-# Local data artifacts
+# Databases / storage
 *.sqlite*
 *.db*
 *.bin
 *.jsonl
 
-# Vector DB (ChromaDB)
-**/vector_db/
-backend/rag/vector_db/
-rag/vector_db/
-
-# Embeddings / Models
+# Model checkpoints / embeddings
 backend/embeddings/
 **/embeddings/
 *.pt
-*.model
 *.h5
+*.model
+*.pickle
+*.pkl
 
-# ======================
-# Node.js / React / Vite
-# ======================
+# Vector DB (Chroma / FAISS / Custom)
+backend/rag/vector_db/
+**/vector_db/
+
+############################################
+# RAW DATA (민감 정보 또는 대용량 CSV)
+############################################
+
+raw_data/
+processed_data/
+datasets/
+backend/data/
+uploads/
+
+# 프로젝트 내 CSV는 기본적으로 ignore
+*.csv
+
+# 예외: 코드에서 필요한 CSV만 허용하려면 아래에 ! 규칙 추가
+# !backend/some_required_file.csv
+
+############################################
+# Node.js / React / Frontend
+############################################
 
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
-frontend/.env
 
-# Yarn / npm logs
+# Frontend environment files
+frontend/.env
+frontend/.env.*.local
+
+# npm / yarn logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ======================
-# Project Data (민감/비공개)
-# ======================
-
-raw_data/
-processed_data/
-data/
-backend/data/
-datasets/
-uploads/
-
-# ======================
-# OS / IDE
-# ======================
+############################################
+# OS / Editor / IDE
+############################################
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
 
 # Windows
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
 # VSCode
 .vscode/
 
-# PyCharm / IntelliJ
+# JetBrains (PyCharm / IntelliJ)
 .idea/
 
-# ======================
-# Temporary Files
-# ======================
+############################################
+# Cache & temporary files
+############################################
 
 *.tmp
 *.temp
