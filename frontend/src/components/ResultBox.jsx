@@ -1,14 +1,19 @@
+// src/components/ResultBox.jsx
 export default function ResultBox({ result }) {
   return (
-    <pre
+    <div
       style={{
-        marginTop: 20,
-        padding: 15,
-        background: "#f5f5f5",
-        borderRadius: 8,
+        width: "100%",
+        minHeight: "200px",
+        padding: "15px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        background: "#f8f8f8",
+        whiteSpace: "pre-wrap",
+        overflowY: "auto",
       }}
     >
-      {JSON.stringify(result, null, 2)}
-    </pre>
+      {result ? JSON.stringify(result, null, 2) : "추천 결과가 여기에 표시됩니다."}
+    </div>
   );
 }

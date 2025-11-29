@@ -1,6 +1,6 @@
-############################################
+############################################################
 # Python / FastAPI
-############################################
+############################################################
 
 # Virtual environments
 venv/
@@ -13,35 +13,39 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Environment variables (절대 공개 금지)
+# Environment variables
 .env
 *.env
 
-# Logs
+# Python logs
 *.log
 
-# Databases / storage
+# SQLite / DB / storage
 *.sqlite*
 *.db*
 *.bin
 *.jsonl
 
-# Model checkpoints / embeddings
-backend/embeddings/
-**/embeddings/
+# Model checkpoints / weights / embeddings
 *.pt
+*.pth
 *.h5
 *.model
 *.pickle
 *.pkl
+*.joblib
 
-# Vector DB (Chroma / FAISS / Custom)
+# Vector DB (Chroma, FAISS, custom)
 backend/rag/vector_db/
 **/vector_db/
 
-############################################
-# RAW DATA (민감 정보 또는 대용량 CSV)
-############################################
+# Embedding files (문서 임베딩)
+backend/embeddings/
+**/embeddings/
+
+############################################################
+# RAW DATA (대용량 / 민감 데이터)
+############################################################
 
 raw_data/
 processed_data/
@@ -49,15 +53,14 @@ datasets/
 backend/data/
 uploads/
 
-# 프로젝트 내 CSV는 기본적으로 ignore
+# CSV 기본적으로 모두 ignore
 *.csv
+# 필요 데이터는 아래처럼 예외 처리 가능
+# !backend/data/required.csv
 
-# 예외: 코드에서 필요한 CSV만 허용하려면 아래에 ! 규칙 추가
-# !backend/some_required_file.csv
-
-############################################
-# Node.js / React / Frontend
-############################################
+############################################################
+# Frontend (React / Vite / Tailwind)
+############################################################
 
 frontend/node_modules/
 frontend/dist/
@@ -67,14 +70,15 @@ frontend/.vite/
 frontend/.env
 frontend/.env.*.local
 
-# npm / yarn logs
+# Frontend logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-############################################
+############################################################
 # OS / Editor / IDE
-############################################
+############################################################
 
 # macOS
 .DS_Store
@@ -92,9 +96,9 @@ Desktop.ini
 # JetBrains (PyCharm / IntelliJ)
 .idea/
 
-############################################
+############################################################
 # Cache & temporary files
-############################################
+############################################################
 
 *.tmp
 *.temp

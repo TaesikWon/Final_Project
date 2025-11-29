@@ -3,7 +3,6 @@
 import os
 import pandas as pd
 from backend.distance import haversine
-from backend.utils.geocode_arcgis import ArcGISGeocoder   # ← 추가
 
 
 # CSV 파일 경로
@@ -28,12 +27,6 @@ class Recommender:
             self.facilities["category"] = (
                 self.facilities["name"].astype(str).apply(self._infer_category)
             )
-
-        # 아파트 데이터 (API 기반)
-        self.apartments = pd.DataFrame(columns=["name", "address", "lat", "lon"])
-
-        print("⚠️ 아파트 CSV를 사용하지 않습니다. API 기반으로 아파트 데이터를 불러올 예정입니다.")
-        print("✅ Recommender initialized.\n")
 
     # ----------------------------------------------------
     # 시설 카테고리 분류
@@ -60,37 +53,13 @@ class Recommender:
     # ----------------------------------------------------
     def set_apartments(self, apartments: list):
         self.apartments = pd.DataFrame(apartments)
+        
+        # lng를 lon으로 변환 (CSV 파일이 lng를 사용하므로)
+        if "lng" in self.apartments.columns:
+            self.apartments["lon"] = self.apartments["lng"]
+        
         self.apartments = self.apartments.dropna(subset=["lat", "lon"]).copy()
         print(f"🏢 아파트 {len(self.apartments)}개 로드 완료.\n")
-
-    # ----------------------------------------------------
-    # ArcGIS로 아파트 주소 → 좌표 자동 변환
-    # ----------------------------------------------------
-    def load_apartments_from_api_with_arcgis(self, apt_list: list):
-        """
-        apt_list 예시:
-        [
-            {"name": "A아파트", "address": "경기도 구리시 인창동 123"},
-            ...
-        ]
-        """
-        print("📌 ArcGIS로 주소 지오코딩 중...")
-
-        geocoder = ArcGISGeocoder()
-        final = []
-
-        for apt in apt_list:
-            lat, lon = geocoder.geocode(apt["address"])
-            if lat and lon:
-                final.append({
-                    "name": apt["name"],
-                    "address": apt["address"],
-                    "lat": lat,
-                    "lon": lon
-                })
-
-        self.set_apartments(final)
-        print(f"🏢 ArcGIS 기반 아파트 좌표 {len(final)}개 로드 완료.\n")
 
     # ----------------------------------------------------
     # (1) 아파트 추천 엔진

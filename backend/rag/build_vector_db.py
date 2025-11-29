@@ -1,26 +1,23 @@
 # backend/rag/build_vector_db.py
 
+import os
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-# -------------------------------
-# 1) 임베딩 모델 로드
-# -------------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VECTOR_DB_PATH = os.path.join(BASE_DIR, "vector_db")
+
+print(f"📌 Vector DB Path: {VECTOR_DB_PATH}")
+
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-# -------------------------------
-# 2) 로컬 벡터DB 생성
-# -------------------------------
-client = chromadb.PersistentClient(path="./vector_db")
+client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
 
 collection = client.get_or_create_collection(
     name="facility_rules",
     metadata={"hnsw:space": "cosine"}
 )
 
-# -------------------------------
-# 3) 원본 RAG 문서 (문서 모델링)
-# -------------------------------
 documents = [
     {
         "doc_id": "rule_01",
@@ -64,20 +61,14 @@ documents = [
     }
 ]
 
-# -------------------------------
-# 4) 청킹 함수
-# -------------------------------
-def chunk_text(text, chunk_size=180):
-    """ 텍스트를 chunk_size 길이로 자르는 함수 """
-    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
-# -------------------------------
-# 5) 청킹된 문서 생성
-# -------------------------------
+def chunk_text(text, chunk_size=180):
+    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
 chunk_documents = []
 for doc in documents:
-    chunks = chunk_text(doc["content"], chunk_size=180)
-
+    chunks = chunk_text(doc["content"])
     for idx, chunk in enumerate(chunks):
         chunk_documents.append({
             "doc_id": f"{doc['doc_id']}_chunk_{idx+1}",
@@ -86,12 +77,11 @@ for doc in documents:
             "category": doc["category"],
             "title": doc["title"],
             "content": chunk,
-            "tags": doc["tags"]
+            # 🔥 리스트를 문자열로 변환 (에러 해결)
+            "tags": ",".join(doc["tags"])
         })
 
-# -------------------------------
-# 6) ChromaDB 입력 준비
-# -------------------------------
+
 contents = [d["content"] for d in chunk_documents]
 ids = [d["doc_id"] for d in chunk_documents]
 metadatas = [
@@ -100,19 +90,14 @@ metadatas = [
         "type": d["type"],
         "category": d["category"],
         "title": d["title"],
+        # 🔥 리스트 대신 문자열 저장
         "tags": d["tags"]
     }
     for d in chunk_documents
 ]
 
-# -------------------------------
-# 7) 임베딩 생성
-# -------------------------------
 embeddings = model.encode(contents).tolist()
 
-# -------------------------------
-# 8) 벡터DB 저장
-# -------------------------------
 collection.add(
     documents=contents,
     ids=ids,
@@ -120,5 +105,6 @@ collection.add(
     embeddings=embeddings
 )
 
-print("✔ 청킹 기반 RAG 벡터DB 생성 완료: backend/rag/vector_db/")
+print("✔ RAG 벡터DB 생성 완료!")
 print(f"총 청크 수: {len(chunk_documents)}")
+print(f"➡ 저장 경로: {VECTOR_DB_PATH}")
