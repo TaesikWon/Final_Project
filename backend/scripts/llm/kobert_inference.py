@@ -3,24 +3,30 @@
 import torch
 from kobert_transformers import get_kobert_model, get_tokenizer
 
-MODEL_PATH = "kobert_facility_classifier.pth"
+MODEL_PATH = "./backend/models/kobert_facility_classifier.pt"
+
+LABELS = ["sports", "shopping", "hospital", "market", "restaurant", "school", "cafe"]
 
 def load_model():
+    # 저장된 파일 로딩
     saved = torch.load(MODEL_PATH, map_location="cpu")
 
+    # KoBERT backbone
     model_bert = get_kobert_model()
     model_bert.load_state_dict(saved["kobert"])
 
-    classifier = torch.nn.Linear(768, len(saved["label_encoder"]))
+    # Classifier
+    classifier = torch.nn.Linear(768, len(LABELS))
     classifier.load_state_dict(saved["classifier"])
 
-    labels = saved["label_encoder"]
+    model_bert.eval()
+    classifier.eval()
 
-    return model_bert.eval(), classifier.eval(), labels
+    return model_bert, classifier
 
 
 def predict(text):
-    model_bert, classifier, labels = load_model()
+    model_bert, classifier = load_model()
     tokenizer = get_tokenizer()
 
     encoded = tokenizer(
@@ -32,14 +38,17 @@ def predict(text):
     )
 
     with torch.no_grad():
-        outputs = model_bert(
+        # KoBERT는 return_dict=False 필요
+        _, pooled = model_bert(
             input_ids=encoded["input_ids"],
-            attention_mask=encoded["attention_mask"]
-        )[1]
-        logits = classifier(outputs)
+            attention_mask=encoded["attention_mask"],
+            return_dict=False
+        )
+
+        logits = classifier(pooled)
         pred = torch.argmax(logits, dim=1).item()
 
-    return labels[pred]
+    return LABELS[pred]
 
 
 if __name__ == "__main__":

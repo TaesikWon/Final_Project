@@ -7,7 +7,6 @@ import pandas as pd
 # 1) 경로 설정
 # -------------------------
 
-# backend/scripts/build_facility_guri.py 기준
 SCRIPT_DIR = os.path.dirname(__file__)
 
 # 기존 facility 파일 위치 (backend/rag/)

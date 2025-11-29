@@ -1,4 +1,5 @@
 # scripts/preprocess.py
+
 import os
 import pandas as pd
 from tqdm import tqdm
@@ -8,7 +9,7 @@ from tqdm import tqdm
 # ============================================
 BASE_DIR = r"C:\Projects\Final_Project"
 RAW_DIR = os.path.join(BASE_DIR, "raw_data")
-OUT_DIR = os.path.join(BASE_DIR, "processed_data")
+OUT_DIR = os.path.join(BASE_DIR, "backend", "data")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # ============================================

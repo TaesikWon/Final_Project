@@ -41,4 +41,19 @@ function App() {
   );
 }
 
+
+<nav className="bg-white shadow-sm border-b p-4 flex gap-6 text-gray-700">
+  <Link to="/" className="hover:text-blue-600">Home</Link>
+  <Link to="/recommend" className="hover:text-blue-600">추천</Link>
+
+  {/* 테스트 메뉴 구역 */}
+  <div className="flex gap-4 ml-auto text-sm text-gray-500">
+    <Link to="/predict-test" className="hover:text-blue-600">Predict Test</Link>
+    <Link to="/recommend-test" className="hover:text-blue-600">Recommend Test</Link>
+    <Link to="/rag-test" className="hover:text-blue-600">RAG Test</Link>
+  </div>
+</nav>
+
+
+
 export default App;

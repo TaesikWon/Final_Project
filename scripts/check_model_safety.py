@@ -1,4 +1,4 @@
-# check_model_safety.py
+# scripts/check_model_safety.py
 
 import torch
 import os

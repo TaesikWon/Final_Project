@@ -7,6 +7,7 @@ venv/
 .venv/
 env/
 ENV/
+pyvenv.cfg
 
 # Python cache
 __pycache__/
@@ -25,6 +26,9 @@ __pycache__/
 *.db*
 *.bin
 *.jsonl
+*.sql
+*.dump
+*.backup
 
 # Model checkpoints / weights / embeddings
 *.pt
@@ -39,7 +43,7 @@ __pycache__/
 backend/rag/vector_db/
 **/vector_db/
 
-# Embedding files (문서 임베딩)
+# Embedding files
 backend/embeddings/
 **/embeddings/
 
@@ -53,10 +57,16 @@ datasets/
 backend/data/
 uploads/
 
-# CSV 기본적으로 모두 ignore
+# ignore all csv
 *.csv
-# 필요 데이터는 아래처럼 예외 처리 가능
+# allow specific CSV with:
 # !backend/data/required.csv
+
+############################################################
+# Jupyter Notebook
+############################################################
+
+.ipynb_checkpoints/
 
 ############################################################
 # Frontend (React / Vite / Tailwind)
@@ -65,8 +75,10 @@ uploads/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/.cache/
+frontend/.solid/
 
-# Frontend environment files
+# Frontend env
 frontend/.env
 frontend/.env.*.local
 
