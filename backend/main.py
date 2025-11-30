@@ -11,7 +11,36 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from anthropic import Anthropic
 
+# =========================================
+# FastAPI 생성
+# =========================================
+app = FastAPI(
+    title="Guri Apartment Recommendation API",
+    description="구리시 아파트 추천 AI 서버",
+    version="1.0.0"
+)
+
+# =========================================
+# CORS 설정 (⚠ 반드시 app 생성 이후에 위치해야 정상 동작)
+# =========================================
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =========================================
 # KoBERT
+# =========================================
 from kobert_transformers import get_tokenizer, get_kobert_model
 
 # HuggingFace
@@ -27,12 +56,6 @@ from backend.llm_explainer import explain_recommendation
 # 환경 변수
 # =========================================
 load_dotenv()
-
-app = FastAPI(
-    title="Guri Apartment Recommendation API",
-    description="구리시 아파트 추천 AI 서버",
-    version="1.0.0"
-)
 
 # =========================================
 # 서비스 객체
@@ -244,6 +267,7 @@ def predict_models(req: PredictRequest):
     }
 
 
+# 라우터 등록
 app.include_router(parse_router)
 app.include_router(recommend_router)
 app.include_router(shared_router)

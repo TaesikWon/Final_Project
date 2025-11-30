@@ -14,14 +14,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Environment variables
+# Environment variables (global)
 .env
 *.env
+**/.env
+**/.env.*
 
 # Python logs
 *.log
 
-# SQLite / DB / storage
+# SQLite & Database files
 *.sqlite*
 *.db*
 *.bin
@@ -39,7 +41,7 @@ __pycache__/
 *.pkl
 *.joblib
 
-# Vector DB (Chroma, FAISS, custom)
+# Vector DB (Chroma, FAISS)
 backend/rag/vector_db/
 **/vector_db/
 
@@ -48,7 +50,7 @@ backend/embeddings/
 **/embeddings/
 
 ############################################################
-# RAW DATA (대용량 / 민감 데이터)
+# RAW & LARGE DATA
 ############################################################
 
 raw_data/
@@ -57,9 +59,8 @@ datasets/
 backend/data/
 uploads/
 
-# ignore all csv
+# Ignore all CSV unless explicitly allowed
 *.csv
-# allow specific CSV with:
 # !backend/data/required.csv
 
 ############################################################
@@ -76,11 +77,14 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/.cache/
-frontend/.solid/
 
-# Frontend env
+# Frontend env (Naver Maps API Key 포함)
 frontend/.env
 frontend/.env.*.local
+
+# Vite cache
+# (frontend/.vite 이미 존재, Global .vite 불필요)
+# .vite/
 
 # Frontend logs
 npm-debug.log*
@@ -105,11 +109,11 @@ Desktop.ini
 # VSCode
 .vscode/
 
-# JetBrains (PyCharm / IntelliJ)
+# JetBrains
 .idea/
 
 ############################################################
-# Cache & temporary files
+# Cache / Temporary
 ############################################################
 
 *.tmp
