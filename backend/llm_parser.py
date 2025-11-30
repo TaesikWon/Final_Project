@@ -1,79 +1,79 @@
-# backend/llm_parser.py
 import os
 import json
 import re
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# 올바른 import 경로로 수정
 from backend.rag.rag_service import RAGService, DistanceKnowledgeBase
 
-
 load_dotenv()
-
-# OpenAI 클라이언트
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class LLMParser:
     def __init__(self):
-        print("📌 LLM Parser Loaded (Chroma RAG + Distance Rules)")
+        print("📌 LLM Parser Loaded (RAG: 규칙 + 시설 검색)")
         self.rag = RAGService()
         self.rules = DistanceKnowledgeBase()
 
     # ----------------------------------------
-    # JSON 보정 함수 - GPT 출력이 깨졌을 때 수정
+    # JSON 보정
     # ----------------------------------------
     def _fix_json(self, text: str) -> str:
-        """
-        GPT가 JSON 앞뒤에 텍스트를 붙여 출력하거나,
-        작은따옴표를 쓸 때 JSON으로 자동 보정해주는 함수.
-        """
 
-        # JSON 부분만 추출하기 ( `{` 로 시작해서 `}` 로 끝나는 구조 )
         match = re.search(r"\{[\s\S]*\}", text)
         if match:
             text = match.group(0)
 
-        # 작은따옴표 → 큰따옴표
         text = text.replace("'", "\"")
-
-        # 단위 제거 (“500m” → “500”)
         text = re.sub(r"(\d+)\s*m", r"\1", text)
 
         return text
 
     # ----------------------------------------
-    # 메인 파서 함수
+    # 메인 파서
     # ----------------------------------------
     def parse_to_conditions(self, text: str) -> dict:
         print("🔍 입력 텍스트:", text)
 
-        # ----------------------
-        # 1) RAG 검색
-        # ----------------------
-        rag_docs = self.rag.search(text)
+        # -------------------------
+        # 1) RAG 검색 (규칙 + 시설)
+        # -------------------------
+        rag = self.rag.search_all(text)
 
-        if not rag_docs:
-            rag_text = "(관련 규칙 없음)"
-        else:
-            rag_text = "\n".join(rag_docs)
+        rules_docs = rag["rules"]["documents"]
+        rules_meta = rag["rules"]["metadatas"]
 
-        print("🔍 RAG 결과:", rag_docs)
+        facility_docs = rag["facilities"]["documents"]
+        facility_meta = rag["facilities"]["metadatas"]
 
-        # ----------------------
-        # 2) 거리 규칙
-        # ----------------------
-        dist_rules = [
-            f"- {cat}: {info['range']} (기본 {info['default_distance']}m)"
-            for cat, info in self.rules.knowledge.items()
-        ]
+        # 규칙 텍스트 형태로 제공
+        rules_text = []
+        for doc, meta in zip(rules_docs, rules_meta):
+            rules_text.append(f"- {meta.get('category', '')}: {meta.get('distance_range', '')} → {doc}")
 
-        # ----------------------
-        # 3) 템플릿 (null → 숫자 0으로 변경)
-        # ----------------------
+        # 시설 텍스트 형태로 제공
+        facilities_text = []
+        for doc, meta in zip(facility_docs, facility_meta):
+            facilities_text.append(
+                f"- {meta.get('name','')} (category: {meta.get('category','')}, "
+                f"lat: {meta.get('lat','')}, lon: {meta.get('lon','')})"
+            )
+
+        rules_block = "\n".join(rules_text) if rules_text else "(규칙 없음)"
+        facilities_block = "\n".join(facilities_text) if facilities_text else "(시설 없음)"
+
+        # -------------------------
+        # 2) JSON 템플릿
+        # -------------------------
         json_template = """
 {
+  "facility_name": "",
+  "facility_lat": 0,
+  "facility_lon": 0,
+  "facility_category": "",
+  "distance_max": 0,
+
   "price_max": 0,
   "price_min": 0,
   "school_distance": 0,
@@ -84,71 +84,55 @@ class LLMParser:
 }
 """
 
-        # ----------------------
-        # 4) LLM 프롬프트
-        # ----------------------
+        # -------------------------
+        # 3) GPT 프롬프트
+        # -------------------------
         prompt = f"""
-너는 '아파트 추천 조건(JSON)'을 만드는 전문 파서이다.
+너는 '아파트 추천 조건(JSON)'을 만드는 파서이다.
 
-[🔍 RAG 검색 결과]
-{rag_text}
+[🔍 규칙 기반 RAG 검색 결과]
+{rules_block}
 
-[📏 거리 기준 규칙]
-{chr(10).join(dist_rules)}
+[🏢 실제 시설 기반 RAG 검색 결과]
+{facilities_block}
 
 [사용자 입력]
 {text}
 
-다음 JSON 템플릿 구조를 절대로 변경하지 말고,
-값만 채워서 JSON만 출력하라:
+아래 JSON 템플릿 구조를 변경하지 말고 값만 채워라.
+단위(m) 금지. JSON만 출력.
 
 {json_template}
-
-⚠ 숫자만 사용 (단위 금지)
-⚠ 설명 금지
-⚠ JSON 외 텍스트 절대 출력 금지
 """
 
-        # ----------------------
-        # 5) GPT 호출
-        # ----------------------
+        # -------------------------
+        # 4) GPT 호출
+        # -------------------------
         try:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",  # ← JSON 정확도 가장 높음
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": "JSON만 출력하라"},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.0
+                temperature=0.0,
             )
         except Exception as e:
             return {"error": f"LLM 호출 오류: {e}"}
 
         raw_output = response.choices[0].message.content.strip()
-        print("🔍 GPT 출력 Raw:", raw_output)
+        print("🔍 GPT Raw:", raw_output)
 
-        # ----------------------
-        # 6) JSON 보정
-        # ----------------------
         fixed = self._fix_json(raw_output)
 
-        # ----------------------
-        # 7) JSON 파싱
-        # ----------------------
         try:
             parsed = json.loads(fixed)
-        except Exception:
-            return {
-                "error": "JSON 파싱 실패",
-                "raw_output": raw_output,
-                "fixed_output": fixed
-            }
+        except:
+            return {"error": "JSON 파싱 실패", "raw": raw_output, "fixed": fixed}
 
-        # ----------------------
-        # 8) "0" → 실제 조건 없음 처리
-        # ----------------------
+        # 0 → None 처리
         for key in parsed:
             if parsed[key] == 0:
-                parsed[key] = None  # None이 최종 추천 엔진에서 의미가 명확함
+                parsed[key] = None
 
         return parsed
