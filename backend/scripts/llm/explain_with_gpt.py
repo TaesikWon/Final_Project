@@ -10,19 +10,19 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def explain(apt_name, distance, category):
     prompt = f"""
-당신은 부동산 전문 AI입니다.
-다음 아파트가 왜 추천되는지 아주 짧고 자연스러운 말투로 설명하세요.
+?�신?� 부?�산 ?�문 AI?�니??
+?�음 ?�파?��? ??추천?�는지 ?�주 짧고 ?�연?�러??말투�??�명?�세??
 
-- 아파트 이름: {apt_name}
-- 시설 종류: {category}
+- ?�파???�름: {apt_name}
+- ?�설 종류: {category}
 - 거리: {distance}m
 
-설명은 2~3문장으로, 사용자에게 간단히 납득될 만큼만 써주세요.
-과한 표현은 금지.
+?�명?� 2~3문장?�로, ?�용?�에�?간단???�득??만큼�??�주?�요.
+과한 ?�현?� 금�?.
 """
 
     resp = client.chat.completions.create(
-        model="gpt-4.1",
+        model="gpt-4.1-mini",
         messages=[{"role": "user", "content": prompt}],
         max_tokens=150
     )
@@ -31,5 +31,5 @@ def explain(apt_name, distance, category):
 
 
 if __name__ == "__main__":
-    result = explain("구리 ○○아파트", 450, "school")
-    print("\n📝 GPT 설명 결과:\n", result)
+    result = explain("구리 ?�○?�파??, 450, "school")
+    print("\n?�� GPT ?�명 결과:\n", result)

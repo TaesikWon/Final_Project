@@ -1,138 +1,131 @@
-import os
-import json
+# backend/llm_parser.py
+
 import re
-from dotenv import load_dotenv
-from openai import OpenAI
-
-from backend.rag.rag_service import RAGService, DistanceKnowledgeBase
-
-load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+from backend.rag.rag_service import RAGService
 
 
 class LLMParser:
+    """
+    거리와 시설명을 규칙 기반으로 추출하고,
+    추출된 시설명만 RAG에 넘겨 매칭하는 파서.
+    """
+
+    FACILITY_KEYWORDS = [
+        "초등학교", "중학교", "고등학교", "학교",
+        "병원", "의원", "한의원", "클리닉", "내과", "외과", "정형외과",
+        "소아과", "산부인과", "치과", "약국",
+        "카페", "커피", "스타벅스", "투썸", "이디야", "빽다방",
+        "음식점", "식당", "레스토랑", "치킨", "피자", "중국집", "일식", "한식",
+        "마트", "편의점", "GS25", "CU", "세븐일레븐", "이마트", "홈플러스",
+        "쇼핑", "상가", "백화점", "아울렛",
+        "헬스장", "체육관", "GYM", "짐", "스포츠", "수영장", "골프",
+        "공원", "도서관", "주민센터"
+    ]
+
     def __init__(self):
-        print("📌 LLM Parser Loaded (RAG: 규칙 + 시설 검색)")
+        print("📌 LLM Parser Loaded")
         self.rag = RAGService()
-        self.rules = DistanceKnowledgeBase()
 
-    # ----------------------------------------
-    # JSON 보정
-    # ----------------------------------------
-    def _fix_json(self, text: str) -> str:
+    def _extract_distance(self, text: str):
+        m = re.search(r"(\d+)\s*m", text)
+        if m:
+            return int(m.group(1))
 
-        match = re.search(r"\{[\s\S]*\}", text)
-        if match:
-            text = match.group(0)
+        m = re.search(r"(\d+)\s*미터", text)
+        if m:
+            return int(m.group(1))
 
-        text = text.replace("'", "\"")
-        text = re.sub(r"(\d+)\s*m", r"\1", text)
+        return None
 
-        return text
+    def _extract_facility_names(self, text: str):
+        facilities = []
 
-    # ----------------------------------------
-    # 메인 파서
-    # ----------------------------------------
-    def parse_to_conditions(self, text: str) -> dict:
+        # 1) 키워드 기반 추출
+        for kw in self.FACILITY_KEYWORDS:
+            if kw in text:
+                idx = text.index(kw)
+                start = max(0, idx - 15)
+                chunk = text[start: idx + len(kw)]
+                candidate = re.sub(r'[^\w가-힣]', '', chunk).strip()
+
+                if candidate and candidate not in facilities:
+                    facilities.append(candidate)
+
+        # 2) 축약형 패턴
+        patterns = [
+            r'([가-힣]{2,8}고)',
+            r'([가-힣]{2,8}중)',
+            r'([가-힣]{2,8}초)',
+        ]
+
+        for pattern in patterns:
+            matches = re.finditer(pattern, text)
+            for m in matches:
+                name = m.group(1)
+                if name not in facilities:
+                    facilities.append(name)
+
+        # 3) "[X] 근처" 패턴
+        m = re.search(r'([가-힣A-Za-z]+)\s*근처', text)
+        if m:
+            name = m.group(1)
+            if name not in facilities:
+                facilities.append(name)
+
+        return facilities if facilities else None
+
+    def parse(self, text: str):
         print("🔍 입력 텍스트:", text)
 
-        # -------------------------
-        # 1) RAG 검색 (규칙 + 시설)
-        # -------------------------
-        rag = self.rag.search_all(text)
+        distance = self._extract_distance(text)
+        print(f"   ➤ 추출된 거리: {distance}")
 
-        rules_docs = rag["rules"]["documents"]
-        rules_meta = rag["rules"]["metadatas"]
+        extracted_names = self._extract_facility_names(text)
+        print(f"   ➤ 추출된 시설명 후보: {extracted_names}")
 
-        facility_docs = rag["facilities"]["documents"]
-        facility_meta = rag["facilities"]["metadatas"]
+        if not extracted_names:
+            return {
+                "error": "NOT_FOUND",
+                "message": "텍스트에서 시설명을 추출할 수 없습니다.",
+                "allowed_categories": self.rag.ALLOWED_CATEGORIES
+            }
 
-        # 규칙 텍스트 형태로 제공
-        rules_text = []
-        for doc, meta in zip(rules_docs, rules_meta):
-            rules_text.append(f"- {meta.get('category', '')}: {meta.get('distance_range', '')} → {doc}")
+        is_between = "사이" in text
 
-        # 시설 텍스트 형태로 제공
-        facilities_text = []
-        for doc, meta in zip(facility_docs, facility_meta):
-            facilities_text.append(
-                f"- {meta.get('name','')} (category: {meta.get('category','')}, "
-                f"lat: {meta.get('lat','')}, lon: {meta.get('lon','')})"
-            )
+        facilities = []
+        for name in extracted_names:
+            fac = self.rag.search_facility_best_match(name)
+            if fac:
+                facilities.append(fac)
 
-        rules_block = "\n".join(rules_text) if rules_text else "(규칙 없음)"
-        facilities_block = "\n".join(facilities_text) if facilities_text else "(시설 없음)"
+        if len(facilities) == 0:
+            return {
+                "error": "NOT_FOUND",
+                "message": f"'{extracted_names[0]}'을(를) 데이터베이스에서 찾을 수 없습니다.",
+                "allowed_categories": self.rag.ALLOWED_CATEGORIES
+            }
 
-        # -------------------------
-        # 2) JSON 템플릿
-        # -------------------------
-        json_template = """
-{
-  "facility_name": "",
-  "facility_lat": 0,
-  "facility_lon": 0,
-  "facility_category": "",
-  "distance_max": 0,
+        if len(facilities) >= 2 and is_between:
+            if distance is None:
+                distance = self.rag._get_default_radius(facilities[0]["category"])
 
-  "price_max": 0,
-  "price_min": 0,
-  "school_distance": 0,
-  "subway_distance": 0,
-  "park_distance": 0,
-  "hospital_distance": 0,
-  "safety_distance": 0
-}
-"""
+            return {
+                "mode": "BETWEEN",
+                "facilities": facilities,
+                "distance_max": distance
+            }
 
-        # -------------------------
-        # 3) GPT 프롬프트
-        # -------------------------
-        prompt = f"""
-너는 '아파트 추천 조건(JSON)'을 만드는 파서이다.
+        facility = facilities[0]
 
-[🔍 규칙 기반 RAG 검색 결과]
-{rules_block}
+        if distance is None:
+            distance = self.rag._get_default_radius(facility["category"])
 
-[🏢 실제 시설 기반 RAG 검색 결과]
-{facilities_block}
-
-[사용자 입력]
-{text}
-
-아래 JSON 템플릿 구조를 변경하지 말고 값만 채워라.
-단위(m) 금지. JSON만 출력.
-
-{json_template}
-"""
-
-        # -------------------------
-        # 4) GPT 호출
-        # -------------------------
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[
-                    {"role": "system", "content": "JSON만 출력하라"},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.0,
-            )
-        except Exception as e:
-            return {"error": f"LLM 호출 오류: {e}"}
-
-        raw_output = response.choices[0].message.content.strip()
-        print("🔍 GPT Raw:", raw_output)
-
-        fixed = self._fix_json(raw_output)
-
-        try:
-            parsed = json.loads(fixed)
-        except:
-            return {"error": "JSON 파싱 실패", "raw": raw_output, "fixed": fixed}
-
-        # 0 → None 처리
-        for key in parsed:
-            if parsed[key] == 0:
-                parsed[key] = None
-
-        return parsed
+        return {
+            "mode": "SINGLE",
+            "facility_id": facility["id"],
+            "facility_name": facility["name"],
+            "facility_lat": facility["lat"],
+            "facility_lng": facility["lng"],
+            "facility_category": facility["category"],
+            "distance_max": distance
+        }

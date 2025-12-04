@@ -2,20 +2,20 @@ import pandas as pd
 import os
 
 # -----------------------------
-# 1) raw_data 폴더 경로 계산
+# 1) raw_data ?�더 경로 계산
 # -----------------------------
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../raw_data"))
 
 # -----------------------------
-# 2) 파일 경로 설정
+# 2) ?�일 경로 ?�정
 # -----------------------------
-file_gyeonggi = os.path.join(BASE_DIR, "경기도공동주택현황.csv")
+file_gyeonggi = os.path.join(BASE_DIR, "경기?�공?�주?�현??csv")
 
 if not os.path.exists(file_gyeonggi):
-    raise FileNotFoundError(f"❌ 파일 없음: {file_gyeonggi}")
+    raise FileNotFoundError(f"???�일 ?�음: {file_gyeonggi}")
 
 # -----------------------------
-# 3) CSV 읽기 (euc-kr → cp949 → utf-8 순서)
+# 3) CSV ?�기 (euc-kr ??cp949 ??utf-8 ?�서)
 # -----------------------------
 try:
     df_gyeonggi = pd.read_csv(file_gyeonggi, encoding="euc-kr")
@@ -25,32 +25,32 @@ except:
     except:
         df_gyeonggi = pd.read_csv(file_gyeonggi, encoding="utf-8")
 
-print("📌 CSV 컬럼 목록:")
+print("?�� CSV 컬럼 목록:")
 print(df_gyeonggi.columns.tolist(), "\n")
 
 # -----------------------------
-# 4) 구리시를 판별할 컬럼 자동 탐색
+# 4) 구리?��? ?�별??컬럼 ?�동 ?�색
 # -----------------------------
-possible_cols = ["시군명", "시군구명", "시군구", "지역명", "시군구코드"]
+possible_cols = ["?�군�?, "?�군구명", "?�군�?, "지??��", "?�군구코??]
 
 target_col = next((col for col in possible_cols if col in df_gyeonggi.columns), None)
 
 if target_col is None:
-    raise ValueError("❌ Error: 구리시를 판별할 컬럼이 존재하지 않습니다.")
+    raise ValueError("??Error: 구리?��? ?�별??컬럼??존재?��? ?�습?�다.")
 
-print(f"✔ 구리시 판별에 사용하는 컬럼: {target_col}")
+print(f"??구리???�별???�용?�는 컬럼: {target_col}")
 
 # -----------------------------
-# 5) 구리시 필터링
+# 5) 구리???�터�?
 # -----------------------------
 df_guri = df_gyeonggi[df_gyeonggi[target_col].astype(str).str.contains("구리")]
 
-print(f"✔ 구리시 아파트 개수: {len(df_guri)} 개")
+print(f"??구리???�파??개수: {len(df_guri)} �?)
 
 # -----------------------------
-# 6) 결과 CSV 저장
+# 6) 결과 CSV ?�??
 # -----------------------------
 output_file = os.path.join(BASE_DIR, "guri_apartments_base.csv")
 df_guri.to_csv(output_file, index=False, encoding="utf-8-sig")
 
-print(f"🎉 저장 완료 → {output_file}")
+print(f"?�� ?�???�료 ??{output_file}")

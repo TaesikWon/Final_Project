@@ -11,7 +11,7 @@ response = client.messages.create(
     model="claude-sonnet-4-5-20250929",
     max_tokens=300,
     messages=[
-        {"role": "user", "content": "안녕! 지금 클로드 API 테스트 중이야."}
+        {"role": "user", "content": "?�녕! 지�??�로??API ?�스??중이??"}
     ]
 )
 

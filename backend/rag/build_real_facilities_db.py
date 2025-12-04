@@ -6,13 +6,13 @@ from sentence_transformers import SentenceTransformer
 DB_PATH = "C:/Projects/Final_Project/backend/rag/vector_db"
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
-# CSV 절대 경로
+# CSV ?��? 경로
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # backend/rag/
 csv_path = os.path.join(BASE_DIR, "..", "data", "facility_guri.csv")
 csv_path = os.path.normpath(csv_path)
 
 df = pd.read_csv(csv_path)
-print("📌 CSV 로드 완료:", len(df), "rows")
+print("?�� CSV 로드 ?�료:", len(df), "rows")
 
 df = df.fillna("")
 df["lat"] = df["lat"].replace("", 0).astype(float)
@@ -52,5 +52,5 @@ collection.add(
     embeddings=embeddings
 )
 
-print("✔ facility_guri 컬렉션 생성 완료!")
-print("총 저장 개수:", len(ids))
+print("??facility_guri 컬렉???�성 ?�료!")
+print("�??�??개수:", len(ids))

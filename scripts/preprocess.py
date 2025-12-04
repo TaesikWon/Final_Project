@@ -5,7 +5,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # ============================================
-# 기본 경로 설정
+# 기본 경로 ?�정
 # ============================================
 BASE_DIR = r"C:\Projects\Final_Project"
 RAW_DIR = os.path.join(BASE_DIR, "raw_data")
@@ -13,51 +13,51 @@ OUT_DIR = os.path.join(BASE_DIR, "backend", "data")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # ============================================
-# 컬럼 매핑 기준
+# 컬럼 매핑 기�?
 # ============================================
 
-# name 후보 (시설명)
+# name ?�보 (?�설�?
 NAME_COLS = [
-    "사업장명", "시설명", "상호명", "시설구분명"
+    "?�업?�명", "?�설�?, "?�호�?, "?�설구분�?
 ]
 
-# address 후보 (도로명/지번 주소)
+# address ?�보 (?�로�?지�?주소)
 ADDRESS_COLS = [
-    "소재지도로명주소", "소재지지번주소"
+    "?�재지?�로명주??, "?�재지지번주??
 ]
 
-# 위도/경도 후보 (경기도 CSV는 모두 동일)
-LAT_COLS = ["WGS84위도"]
+# ?�도/경도 ?�보 (경기??CSV??모두 ?�일)
+LAT_COLS = ["WGS84?�도"]
 LON_COLS = ["WGS84경도"]
 
 
 # ============================================
-# 카테고리 자동 분류
+# 카테고리 ?�동 분류
 # ============================================
 def guess_category(filename):
     f = filename.lower()
 
-    # 병원/의원/치과/한의원 모두 hospital로 통일
-    if ("병원" in f) or ("의원" in f) or ("치과" in f) or ("한의원" in f):
+    # 병원/?�원/치과/?�의??모두 hospital�??�일
+    if ("병원" in f) or ("?�원" in f) or ("치과" in f) or ("?�의?? in f):
         return "hospital"
 
-    if "시장" in f or "마트" in f:
+    if "?�장" in f or "마트" in f:
         return "market"
 
-    if "음식점" in f or "카페" in f:
+    if "?�식?? in f or "카페" in f:
         return "restaurant"
 
     if "체육" in f:
         return "sports"
 
-    if "대규모점포" in f:
+    if "?�규모?�포" in f:
         return "shopping"
 
     return "etc"
 
 
 # ============================================
-# 단일 CSV → 표준 구조로 정규화
+# ?�일 CSV ???��? 구조�??�규??
 # ============================================
 def normalize(df, filename):
 
@@ -69,28 +69,28 @@ def normalize(df, filename):
     addr_col = next((c for c in ADDRESS_COLS if c in df.columns), None)
     df["address"] = df[addr_col].astype(str) if addr_col else None
 
-    # 위도/경도 매핑
+    # ?�도/경도 매핑
     lat_col = next((c for c in LAT_COLS if c in df.columns), None)
     lon_col = next((c for c in LON_COLS if c in df.columns), None)
 
     df["lat"] = pd.to_numeric(df[lat_col], errors="coerce") if lat_col else None
     df["lon"] = pd.to_numeric(df[lon_col], errors="coerce") if lon_col else None
 
-    # category 자동 분류
+    # category ?�동 분류
     df["category"] = guess_category(filename)
 
-    # 필수 데이터 없는 행 제거
+    # ?�수 ?�이???�는 ???�거
     df = df.dropna(subset=["name", "address", "lat", "lon"])
 
-    # 최종 컬럼만 남기기
+    # 최종 컬럼�??�기�?
     return df[["name", "address", "lat", "lon", "category"]]
 
 
 # ============================================
-# 전체 CSV 전처리
+# ?�체 CSV ?�처�?
 # ============================================
 def preprocess_facilities():
-    print("\n🏙 시설 데이터 전처리 시작...\n")
+    print("\n?�� ?�설 ?�이???�처�??�작...\n")
 
     all_rows = []
 
@@ -100,21 +100,21 @@ def preprocess_facilities():
 
         path = os.path.join(RAW_DIR, file)
 
-        # 인코딩 깨짐 방지: cp949 기본
+        # ?�코??깨짐 방�?: cp949 기본
         df = pd.read_csv(path, encoding="cp949", encoding_errors="ignore")
 
         df_clean = normalize(df, file)
         all_rows.append(df_clean)
 
-    # 통합 후 중복 제거
+    # ?�합 ??중복 ?�거
     result = pd.concat(all_rows, ignore_index=True)
     result = result.drop_duplicates(subset=["name", "lat", "lon"])
 
     out_path = os.path.join(OUT_DIR, "facility_guri.csv")
     result.to_csv(out_path, index=False, encoding="utf-8-sig")
 
-    print("\n🎉 시설 전처리 완료!")
-    print(f"📁 저장 위치: {out_path}")
+    print("\n?�� ?�설 ?�처�??�료!")
+    print(f"?�� ?�???�치: {out_path}")
 
 
 # ============================================

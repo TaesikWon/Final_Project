@@ -8,7 +8,7 @@ MODEL_PATH = "./backend/models/kobert_facility_classifier.pt"
 LABELS = ["sports", "shopping", "hospital", "market", "restaurant", "school", "cafe"]
 
 def load_model():
-    # 저장된 파일 로딩
+    # ?�?�된 ?�일 로딩
     saved = torch.load(MODEL_PATH, map_location="cpu")
 
     # KoBERT backbone
@@ -38,7 +38,7 @@ def predict(text):
     )
 
     with torch.no_grad():
-        # KoBERT는 return_dict=False 필요
+        # KoBERT??return_dict=False ?�요
         _, pooled = model_bert(
             input_ids=encoded["input_ids"],
             attention_mask=encoded["attention_mask"],
@@ -52,5 +52,5 @@ def predict(text):
 
 
 if __name__ == "__main__":
-    sample = "구리역 스타벅스"
-    print("예측 결과:", predict(sample))
+    sample = "구리???��?벅스"
+    print("?�측 결과:", predict(sample))

@@ -9,68 +9,50 @@ env/
 ENV/
 pyvenv.cfg
 
-# Python cache
+# Compiled Python files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Environment variables (global)
-.env
-*.env
-**/.env
-**/.env.*
+# Backend env
+/backend/.env
 
-# Python logs
+# Logs
 *.log
 
-# SQLite & Database files
-*.sqlite*
-*.db*
-*.bin
-*.jsonl
-*.sql
-*.dump
-*.backup
+# SQLite DB & backups
+backend/data/*.db
+backend/data/*.sqlite*
+backend/data/*.backup
+backend/data/*.dump
 
-# Model checkpoints / weights / embeddings
-*.pt
-*.pth
-*.h5
-*.model
-*.pickle
-*.pkl
-*.joblib
-
-# Vector DB (Chroma, FAISS)
+# Vector DB (Chroma)
 backend/rag/vector_db/
-**/vector_db/
 
-# Embedding files
+# Embeddings
 backend/embeddings/
-**/embeddings/
 
 ############################################################
-# RAW & LARGE DATA
+# Raw / Large data
 ############################################################
 
 raw_data/
 processed_data/
 datasets/
-backend/data/
 uploads/
 
-# Ignore all CSV unless explicitly allowed
 *.csv
-# !backend/data/required.csv
+*.jsonl
+*.bin
 
 ############################################################
-# Jupyter Notebook
+# Jupyter
 ############################################################
 
 .ipynb_checkpoints/
 
 ############################################################
-# Frontend (React / Vite / Tailwind)
+# Frontend (Vite / React)
 ############################################################
 
 frontend/node_modules/
@@ -78,13 +60,9 @@ frontend/dist/
 frontend/.vite/
 frontend/.cache/
 
-# Frontend env (Naver Maps API Key 포함)
+# Frontend environment variables
 frontend/.env
 frontend/.env.*.local
-
-# Vite cache
-# (frontend/.vite 이미 존재, Global .vite 불필요)
-# .vite/
 
 # Frontend logs
 npm-debug.log*
@@ -93,27 +71,19 @@ yarn-error.log*
 pnpm-debug.log*
 
 ############################################################
-# OS / Editor / IDE
+# OS / Editor
 ############################################################
 
-# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Windows
 Thumbs.db
-ehthumbs.db
 Desktop.ini
 
-# VSCode
+# VSCode / JetBrains
 .vscode/
-
-# JetBrains
 .idea/
 
 ############################################################
-# Cache / Temporary
+# Temporary
 ############################################################
 
 *.tmp
