@@ -9,44 +9,75 @@ env/
 ENV/
 pyvenv.cfg
 
-# Compiled Python files
+# Python cache / compiled files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Backend env
-/backend/.env
+# Backend environment file
+backend/.env
+.env
+*.env
+**/.env
+**/.env.*
 
+############################################################
 # Logs
+############################################################
+
 *.log
 
+############################################################
 # SQLite DB & backups
+############################################################
+
 backend/data/*.db
 backend/data/*.sqlite*
 backend/data/*.backup
 backend/data/*.dump
 
-# Vector DB (Chroma)
+############################################################
+# Vector DB (Chroma, FAISS 등)
+############################################################
+
 backend/rag/vector_db/
+**/vector_db/
+*.bin
+*.pkl
+*.pt
+*.pth
 
-# Embeddings
+############################################################
+# Machine Learning / LLM Model files
+############################################################
+
+backend/models/
+**/models/
+*.h5
+*.model
+*.pickle
+*.joblib
+*.ckpt
+
+############################################################
+# Embeddings & large data
+############################################################
+
 backend/embeddings/
-
-############################################################
-# Raw / Large data
-############################################################
-
 raw_data/
 processed_data/
 datasets/
 uploads/
-
-*.csv
 *.jsonl
-*.bin
 
 ############################################################
-# Jupyter
+# CSV 제외
+############################################################
+
+*.csv
+
+############################################################
+# Jupyter Notebook
 ############################################################
 
 .ipynb_checkpoints/
@@ -60,7 +91,7 @@ frontend/dist/
 frontend/.vite/
 frontend/.cache/
 
-# Frontend environment variables
+# Frontend env
 frontend/.env
 frontend/.env.*.local
 
@@ -71,19 +102,18 @@ yarn-error.log*
 pnpm-debug.log*
 
 ############################################################
-# OS / Editor
+# OS / Editor / IDE
 ############################################################
 
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# VSCode / JetBrains
 .vscode/
 .idea/
 
 ############################################################
-# Temporary
+# Temp files
 ############################################################
 
 *.tmp
