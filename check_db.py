@@ -1,3 +1,5 @@
+# check_db.py
+
 import sqlite3
 
 DB_PATH = "backend/data/apartments_facilities.db"

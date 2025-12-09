@@ -1,28 +1,31 @@
 # backend/main.py
 
 import os
-import torch
-import torch.nn as nn
-import pandas as pd
-
+import re
+import chromadb
 from fastapi import FastAPI, APIRouter
 from pydantic import BaseModel
-from dotenv import load_dotenv
 from openai import OpenAI
-from anthropic import Anthropic
+from pathlib import Path
+from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
+
+from backend.llm_parser import LLMParser
+from backend.rag.rag_service import RAGService
+from backend.chat_memory import chat_memory
 
 # ---------------------------------------------------------
-# FastAPI
+# 기본 설정
 # ---------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
 app = FastAPI(
     title="Guri Apartment Recommendation API",
-    description="구리시 아파트 추천 AI 서버",
-    version="1.0.0"
+    description="구리시 아파트 추천 AI 서버 (대화형 챗봇 모드)",
+    version="2.0.0",
 )
 
-# ---------------------------------------------------------
-# CORS
-# ---------------------------------------------------------
 from fastapi.middleware.cors import CORSMiddleware
 
 origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
@@ -36,204 +39,180 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------
-# Imports
+# 서비스 로딩
 # ---------------------------------------------------------
-from kobert_transformers import get_tokenizer, get_kobert_model
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-
-from backend.llm_parser import LLMParser
-from backend.rag.rag_service import RAGService
-
-# ---------------------------------------------------------
-# Load env
-# ---------------------------------------------------------
-load_dotenv()
-
 parser = LLMParser()
 rag = RAGService()
-
-# ---------------------------------------------------------
-# Apartment Data Loading
-# ---------------------------------------------------------
-APART_PATH = "backend/data/apartment.csv"
-
-if os.path.exists(APART_PATH):
-    df_apts = pd.read_csv(APART_PATH)
-    print(f"🏢 아파트 {len(df_apts)}개 로딩 완료")
-else:
-    print("❌ apartment.csv 없음:", APART_PATH)
-
-# ---------------------------------------------------------
-# Request Models
-# ---------------------------------------------------------
-class Query(BaseModel):
-    text: str
-
-class RecommendRequest(BaseModel):
-    conditions: dict
-
-class SharedRequest(BaseModel):
-    apt1: str
-    apt2: str
-    category: str = "school"
-    radius: int = 800
-
-class PredictRequest(BaseModel):
-    text: str
-
-# ---------------------------------------------------------
-# Labels
-# ---------------------------------------------------------
-LABELS = ["sports", "shopping", "hospital", "market", "restaurant", "school", "cafe"]
-NUM_LABELS = len(LABELS)
-
-# ---------------------------------------------------------
-# KoBERT Loading
-# ---------------------------------------------------------
-kobert_tokenizer = get_tokenizer()
-kobert_model_path = "./backend/models/kobert_facility_classifier.pt"
-
-kobert_bert_model = None
-kobert_classifier = None
-
-if os.path.exists(kobert_model_path):
-    try:
-        print("📦 KoBERT 모델 로딩...")
-        checkpoint = torch.load(kobert_model_path, map_location="cpu")
-
-        kobert_bert_model = get_kobert_model()
-        kobert_classifier = nn.Linear(768, NUM_LABELS)
-
-        kobert_bert_model.load_state_dict(checkpoint["kobert"])
-        kobert_classifier.load_state_dict(checkpoint["classifier"])
-
-        kobert_bert_model.eval()
-        kobert_classifier.eval()
-        print("✅ KoBERT 모델 로딩 완료")
-
-    except Exception as e:
-        print("⚠ KoBERT 로드 실패:", e)
-
-else:
-    print("ℹ KoBERT 모델 없음")
-
-def run_kobert(text):
-    if kobert_bert_model is None:
-        return "KoBERT 모델 없음"
-
-    try:
-        inputs = kobert_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-
-        with torch.no_grad():
-            _, pooled = kobert_bert_model(
-                input_ids=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
-                return_dict=False
-            )
-            logits = kobert_classifier(pooled)
-
-        pred = torch.argmax(logits, dim=1).item()
-        return LABELS[pred]
-
-    except Exception as e:
-        return f"KoBERT 오류: {e}"
-
-# ---------------------------------------------------------
-# KLUE 모델 로딩
-# ---------------------------------------------------------
-try:
-    print("📘 KLUE 로딩 중…")
-    klue_tokenizer = AutoTokenizer.from_pretrained("klue/roberta-small")
-    klue_model = AutoModelForSequenceClassification.from_pretrained(
-        "klue/roberta-small",
-        num_labels=NUM_LABELS
-    )
-    klue_model.load_state_dict(torch.load("./backend/models/klue_facility_classifier.pt"))
-    klue_model.eval()
-    print("✅ KLUE 로딩 완료")
-
-except:
-    klue_model = None
-    print("⚠ KLUE 로드 실패")
-
-def run_klue(text):
-    if klue_model is None:
-        return "KLUE 모델 없음"
-
-    try:
-        inputs = klue_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-
-        with torch.no_grad():
-            logits = klue_model(**inputs).logits
-
-        pred = torch.argmax(logits, dim=1).item()
-        return LABELS[pred]
-    except Exception as e:
-        return f"KLUE 오류: {e}"
-
-# ---------------------------------------------------------
-# ELECTRA 모델 로딩
-# ---------------------------------------------------------
-try:
-    print("🟩 ELECTRA 로딩 중…")
-    electra_tokenizer = AutoTokenizer.from_pretrained("monologg/koelectra-small-v3-discriminator")
-    electra_model = AutoModelForSequenceClassification.from_pretrained(
-        "monologg/koelectra-small-v3-discriminator",
-        num_labels=NUM_LABELS
-    )
-    electra_model.load_state_dict(torch.load("./backend/models/electra_facility_classifier.pt"))
-    electra_model.eval()
-    print("✅ ELECTRA 로딩 완료")
-
-except:
-    electra_model = None
-    print("⚠ ELECTRA 로드 실패")
-
-def run_electra(text):
-    if electra_model is None:
-        return "ELECTRA 모델 없음"
-
-    try:
-        inputs = electra_tokenizer(text, return_tensors="pt", padding=True, truncation=True)
-
-        with torch.no_grad():
-            logits = electra_model(**inputs).logits
-
-        pred = torch.argmax(logits, dim=1).item()
-        return LABELS[pred]
-    except Exception as e:
-        return f"ELECTRA 오류: {e}"
-
-# ---------------------------------------------------------
-# GPT / CLAUDE API
-# ---------------------------------------------------------
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-claude_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+embedder = SentenceTransformer("jhgan/ko-sroberta-multitask")
+chroma_client = chromadb.PersistentClient(path="./backend/rag/vector_db")
 
 # ---------------------------------------------------------
-# Routes
+# Request Model
 # ---------------------------------------------------------
-parse_router = APIRouter(prefix="/parse", tags=["Parser"])
-predict_router = APIRouter(prefix="/predict", tags=["Prediction"])
+class AskRequest(BaseModel):
+    question: str
 
-app.include_router(parse_router)
-app.include_router(predict_router)
+# ---------------------------------------------------------
+# GPT 대화형 응답 생성 (핵심)
+# ---------------------------------------------------------
+def gpt_with_memory(user_question, facility_info=None, apartments=None):
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "너는 구리시 지역을 잘 아는 부동산 전문 챗봇이다. "
+                "사용자의 질문 맥락을 기억하며 자연스럽게 대화한다."
+            ),
+        }
+    ]
 
-@parse_router.post("/")
-def parse_text(req: Query):
-    return parser.parse(req.text)
+    # 최근 10턴 대화 히스토리
+    for turn in chat_memory.history[-10:]:
+        messages.append({"role": "user", "content": turn["user"]})
+        messages.append({"role": "assistant", "content": turn["ai"]})
 
-@predict_router.post("/models")
-def predict_models(req: PredictRequest):
-    t = req.text
-    return {
-        "input": t,
-        "KoBERT": run_kobert(t),
-        "KLUE": run_klue(t),
-        "ELECTRA": run_electra(t)
-    }
+    # RAG 검색 결과도 참고용으로 전달
+    if facility_info or apartments:
+        messages.append(
+            {
+                "role": "assistant",
+                "content": f"시설 정보: {facility_info}\n아파트 검색 결과: {apartments}",
+            }
+        )
+
+    # 이번 질문
+    messages.append({"role": "user", "content": user_question})
+
+    resp = openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        max_tokens=2000,
+        temperature=0.7,
+    )
+
+    return resp.choices[0].message.content.strip()
+
+# ---------------------------------------------------------
+# 후속 질문 처리 ("몇 개야?", "가장 가까운 곳은?" 등)
+# ---------------------------------------------------------
+def handle_followup_question(question: str):
+    """
+    메모리에 저장된 최근 추천 결과 기반으로 후속 질문 처리
+    """
+    ctx = chat_memory.get_recent_context()
+
+    if ctx["last_recommendations"] is None:
+        return None  # 이전 검색이 없으면 후속 질문 아님
+
+    apts = ctx["last_recommendations"]
+    q = question.replace(" ", "")  # 띄어쓰기 제거한 버전
+
+    # 1) 가장 가까운 아파트?
+    if "가까운" in question or "최단거리" in question:
+        nearest = sorted(apts, key=lambda x: x["distance_school"])[0]
+        return (
+            f"가장 가까운 아파트는 {nearest['apartment']}이며 "
+            f"{int(nearest['distance_school'])}m 떨어져 있습니다."
+        )
+
+    # 2) 가장 먼 아파트?
+    if "가장멀" in q or "제일멀" in q or "멀리" in question:
+        far = sorted(apts, key=lambda x: x["distance_school"], reverse=True)[0]
+        return (
+            f"가장 먼 아파트는 {far['apartment']}이며 "
+            f"{int(far['distance_school'])}m 떨어져 있습니다."
+        )
+
+    # 3) 개수 관련 질문
+    if re.search(r"몇\s*개", question) or "몇개" in q or "개수" in question:
+        return f"총 {len(apts)}개의 아파트가 검색되었습니다."
+
+    return None
+
+# ---------------------------------------------------------
+# 추천 API (대화형 모드)
+# ---------------------------------------------------------
+recommend_router = APIRouter(prefix="/recommend", tags=["Recommendation"])
+
+@recommend_router.post("/ask")
+def recommend_api(req: AskRequest):
+    user_question = req.question
+
+    # 1) 먼저 후속 질문인지 확인
+    followup_answer = handle_followup_question(user_question)
+    if followup_answer is not None:
+        # 후속 질문이면 RAG 안 돌리고 바로 답변
+        chat_memory.save_turn(user_question, followup_answer)
+        return {"ok": True, "summary": followup_answer, "result": []}
+
+    # 2) LLM 파싱
+    parsed = parser.parse(user_question)
+    print("📌 파싱:", parsed)
+
+    if parsed.get("error"):
+        chat_memory.save_turn(user_question, parsed["message"])
+        return {"ok": False, "error": parsed["message"], "result": []}
+
+    mode = parsed.get("mode")
+    limit = parsed.get("limit")
+    apartments = []
+    facility_info = None
+
+    # 3) 실제 검색 (RAG)
+    if mode == "BETWEEN":
+        apartments = rag.search_apartments_hybrid(
+            parsed=parsed,
+            radius=parsed.get("distance_max"),
+            query=user_question,
+            limit=limit,
+        )
+
+        f1, f2 = parsed["facilities"]
+        facility_info = {"mode": "between", "f1": f1, "f2": f2}
+
+    else:
+        facility_name = parsed["facility_name"]
+        radius = parsed["distance_max"]
+
+        apartments = rag.search_apartments_hybrid(
+            facility_name=facility_name,
+            radius=radius,
+            query=user_question,
+            parsed=parsed,
+            limit=limit,
+        )
+
+        facility_detail = rag.search_facility_best_match(facility_name)
+        address = (
+            facility_detail.get("address", "주소 없음") if facility_detail else "주소 없음"
+        )
+
+        facility_info = {
+            "facility_name": facility_name,
+            "category": parsed["facility_category"],
+            "address": address,
+            "radius": radius,
+        }
+
+    # 4) GPT 대화형 응답 생성
+    summary = gpt_with_memory(user_question, facility_info, apartments)
+
+    # 5) 메모리에 저장
+    chat_memory.save_recommendations(facility_info, apartments, mode)
+    chat_memory.save_turn(user_question, summary)
+
+    return {"ok": True, "summary": summary, "result": apartments}
+
+# ---------------------------------------------------------
+# 라우터 등록 & 헬스체크
+# ---------------------------------------------------------
+app.include_router(recommend_router)
 
 @app.get("/")
 def home():
-    return {"message": "Guri AI Recommendation API is running"}
+    return {"message": "Guri AI Recommendation API running (chatbot mode)"}
 
+@app.get("/ping")
+def ping():
+    return {"msg": "pong"}

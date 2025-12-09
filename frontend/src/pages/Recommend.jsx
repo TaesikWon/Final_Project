@@ -1,72 +1,123 @@
 // frontend/src/pages/Recommend.jsx
 
-import { useState } from "react";
-import { parseConditions, recommendApts } from "../api/guriApi";
-import MapView from "../components/MapView";
+import { useState, useEffect, useRef } from "react";
+import { recommendAsk } from "../api/guriApi";
 
 export default function Recommend() {
   const [query, setQuery] = useState("");
-  const [conditions, setConditions] = useState(null);
-  const [apartments, setApartments] = useState([]);
-  const [selectedApt, setSelectedApt] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const runRecommend = async () => {
-    if (!query.trim()) return alert("조건을 입력하세요.");
+  const chatRef = useRef(null);
+
+  useEffect(() => {
+    if (chatRef.current) {
+      chatRef.current.scrollTop = chatRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const askServer = async () => {
+    if (!query.trim()) return;
+
+    setLoading(true);
+    setMessages((prev) => [...prev, { role: "user", content: query }]);
 
     try {
-      const parsed = await parseConditions(query);
-      setConditions(parsed.parsed_conditions);
+      const data = await recommendAsk(query);
 
-      const result = await recommendApts(parsed.parsed_conditions);
-      setApartments(result);
+      if (!data.ok) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.error }
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: data.summary }
+        ]);
+      }
     } catch (err) {
-      console.error(err);
-      alert("추천 과정에서 오류가 발생했습니다.");
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "서버 오류가 발생했습니다." }
+      ]);
+    } finally {
+      setQuery("");
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">🏢 구리시 아파트 추천</h1>
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
 
-      {/* 입력 영역 */}
-      <div className="bg-white border rounded-xl p-6 shadow">
-        <input
-          className="w-full border rounded px-4 py-3 mb-4"
-          placeholder="예: 인창고등학교 근처 5억 이하 아파트 추천해줘"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <button
-          onClick={runRecommend}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded"
-        >
-          추천 실행
-        </button>
-      </div>
+      {/* -------------------- 상단 고정 영역 -------------------- */}
+      <div className="max-w-5xl mx-auto w-full p-6 flex-shrink-0">
+        <h1 className="text-3xl font-bold mb-6 flex items-center gap-2">
+          🏢 구리시 AI 아파트 추천 - 챗봇
+        </h1>
 
-      {/* 지도 */}
-      <h2 className="text-xl font-semibold mt-10">🗺 지도</h2>
-      <MapView apartments={apartments} selectedApt={selectedApt} />
+        <div className="bg-white border rounded-xl p-6 shadow">
+          <input
+            className="w-full border rounded px-4 py-3 mb-4"
+            placeholder="예: 구리고 반경 500m 내 아파트 추천해줘"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && askServer()}
+          />
 
-      {/* 추천 리스트 */}
-      <div className="mt-8 grid grid-cols-1 gap-4">
-        {apartments.map((apt) => (
-          <div
-            key={apt.apartment}
-            onClick={() => setSelectedApt(apt.apartment)}
-            className="bg-white border rounded-xl p-4 shadow cursor-pointer hover:shadow-md transition"
+          <button
+            onClick={askServer}
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition"
           >
-            <h3 className="font-bold">{apt.apartment}</h3>
-            <p className="text-sm text-gray-600">
-              학교 거리: {apt.distance_school}m
-            </p>
-            <p className="text-sm text-gray-600">
-              가격: {apt.price || "정보 없음"}
-            </p>
-          </div>
-        ))}
+            {loading ? "⏳ 검색 중..." : "보내기"}
+          </button>
+        </div>
       </div>
+
+      {/* -------------------- 대화 영역 전체 -------------------- */}
+      <div className="max-w-5xl mx-auto w-full flex-1 px-6 pb-6 overflow-hidden">
+        <div className="bg-white border rounded-xl shadow-sm h-full flex flex-col">
+
+          {/* 제목 */}
+          <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              💬 대화
+            </h2>
+          </div>
+
+          {/* 메시지 스크롤 영역 */}
+          <div
+            ref={chatRef}
+            className="flex-1 p-6 overflow-y-auto space-y-4"
+          >
+            {messages.length === 0 && (
+              <p className="text-gray-400 text-center py-20">
+                아직 대화가 없습니다. 질문을 입력해보세요!
+              </p>
+            )}
+
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`
+                  p-4 rounded-xl shadow 
+                  w-fit max-w-[75%] whitespace-pre-line break-words
+                  ${
+                    msg.role === "user"
+                      ? "bg-blue-100 ml-auto text-right"
+                      : "bg-gray-100 mr-auto text-left"
+                  }
+                `}
+              >
+                {msg.content}
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 }

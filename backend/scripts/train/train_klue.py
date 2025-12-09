@@ -1,3 +1,5 @@
+# backend/scripts/train/train_klue.py
+
 import os
 import torch
 import torch.optim as optim
@@ -43,7 +45,7 @@ class FacilityDataset(Dataset):
 
 
 # ==========================================
-# Eval
+# Evaluation
 # ==========================================
 def evaluate(model, loader, device):
     model.eval()
@@ -56,9 +58,7 @@ def evaluate(model, loader, device):
                 attention_mask=batch["attention_mask"].to(device)
             )
 
-            # tuple fallback
             logits = out.logits if hasattr(out, "logits") else out[0]
-
             preds = logits.argmax(dim=1)
             labels = batch["labels"].to(device)
 
@@ -69,7 +69,7 @@ def evaluate(model, loader, device):
 
 
 # ==========================================
-# Predict all
+# Predict All
 # ==========================================
 def predict_all(model, loader, device):
     model.eval()
@@ -83,7 +83,6 @@ def predict_all(model, loader, device):
             )
 
             logits = out.logits if hasattr(out, "logits") else out[0]
-
             preds = logits.argmax(dim=1)
 
             y_pred.extend(preds.cpu().tolist())
@@ -96,7 +95,7 @@ def predict_all(model, loader, device):
 # Train
 # ==========================================
 def train():
-    print("?“Œ Loading datasets...")
+    print("ðŸ“‚ Loading datasets...")
 
     train_df = pd.read_csv(TRAIN_PATH)
     val_df   = pd.read_csv(VAL_PATH)
@@ -106,7 +105,7 @@ def train():
     label2id   = {v: i for i, v in enumerate(label_list)}
     num_labels = len(label_list)
 
-    print("?”– LABELS:", label_list)
+    print("ðŸ“Œ LABELS:", label_list)
 
     tokenizer = AutoTokenizer.from_pretrained("klue/roberta-small")
 
@@ -115,7 +114,7 @@ def train():
     test_loader  = DataLoader(FacilityDataset(test_df, tokenizer, label2id), batch_size=8)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("?? Training on:", device)
+    print(f"âš™ Training on device: {device}")
 
     # ---- Config ----
     config = AutoConfig.from_pretrained("klue/roberta-small")
@@ -134,6 +133,8 @@ def train():
         model.train()
         total_loss = 0
 
+        print(f"\nðŸš€ Epoch {epoch+1} started...")
+
         for batch in train_loader:
             optimizer.zero_grad()
 
@@ -143,7 +144,6 @@ def train():
                 labels=batch["labels"].to(device),
             )
 
-            # â­??ˆë? ?¤ë¥˜ ???˜ëŠ” loss ì¶”ì¶œ
             loss = out.loss if hasattr(out, "loss") else out[0]
 
             loss.backward()
@@ -152,20 +152,19 @@ def train():
             total_loss += loss.item()
 
         val_acc = evaluate(model, val_loader, device)
-        print(f"??Epoch {epoch+1} | Loss: {total_loss/len(train_loader):.4f} | Val Acc: {val_acc:.4f}")
+        print(f"ðŸ“˜ Epoch {epoch+1} | Loss: {total_loss/len(train_loader):.4f} | Val Acc: {val_acc:.4f}")
 
     torch.save(model.state_dict(), SAVE_PATH)
 
-    print("\n?Ž‰ KLUE Training Completed!")
+    print("\nðŸŽ‰ KLUE Training Completed!")
+    print(f"ðŸ’¾ Model saved to: {SAVE_PATH}")
 
     test_acc = evaluate(model, test_loader, device)
-    print(f"?“ˆ Test Accuracy: {test_acc:.4f}")
+    print(f"\nðŸ§ª Test Accuracy: {test_acc:.4f}")
 
     y_true, y_pred = predict_all(model, test_loader, device)
-    print("\n?“Š Detailed Test Report")
+    print("\nðŸ“„ Detailed Test Report")
     print(classification_report(y_true, y_pred, target_names=label_list))
-
-    print(f"?’¾ Saved ??{SAVE_PATH}")
 
 
 if __name__ == "__main__":

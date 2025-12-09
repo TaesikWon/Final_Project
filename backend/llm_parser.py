@@ -1,5 +1,4 @@
 # backend/llm_parser.py
-
 import re
 from backend.rag.rag_service import RAGService
 
@@ -26,17 +25,42 @@ class LLMParser:
         print("📌 LLM Parser Loaded")
         self.rag = RAGService()
 
+    # -------------------- 거리 추출 --------------------
     def _extract_distance(self, text: str):
+        # "500m"
         m = re.search(r"(\d+)\s*m", text)
         if m:
             return int(m.group(1))
 
+        # "500 미터"
         m = re.search(r"(\d+)\s*미터", text)
         if m:
             return int(m.group(1))
 
         return None
 
+    # -------------------- 개수 추출 --------------------
+    def _extract_count(self, text: str):
+        """요청한 아파트 개수 추출"""
+        m = re.search(r'(\d+)\s*개', text)
+        if m:
+            return int(m.group(1))
+
+        m = re.search(r'(\d+)\s*곳', text)
+        if m:
+            return int(m.group(1))
+
+        m = re.search(r'상위\s*(\d+)', text)
+        if m:
+            return int(m.group(1))
+
+        m = re.search(r'top\s*(\d+)', text, re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+
+        return None
+
+    # -------------------- 시설명 후보 추출 --------------------
     def _extract_facility_names(self, text: str):
         facilities = []
 
@@ -47,17 +71,15 @@ class LLMParser:
                 start = max(0, idx - 15)
                 chunk = text[start: idx + len(kw)]
                 candidate = re.sub(r'[^\w가-힣]', '', chunk).strip()
-
                 if candidate and candidate not in facilities:
                     facilities.append(candidate)
 
-        # 2) 축약형 패턴
+        # 2) 축약형 패턴 (OO고 / OO중 / OO초)
         patterns = [
             r'([가-힣]{2,8}고)',
             r'([가-힣]{2,8}중)',
             r'([가-힣]{2,8}초)',
         ]
-
         for pattern in patterns:
             matches = re.finditer(pattern, text)
             for m in matches:
@@ -72,13 +94,33 @@ class LLMParser:
             if name not in facilities:
                 facilities.append(name)
 
+        # 4) "반경" 앞의 단어
+        m = re.search(r'([가-힣A-Za-z0-9]+)\s*반경', text)
+        if m:
+            name = m.group(1).strip()
+            if name and not name.isdigit() and name not in facilities:
+                facilities.append(name)
+                print(f"   🔥 반경 패턴 추출: {name}")
+
+        # 5) 문장 첫 단어 (fallback)
+        if not facilities:
+            m = re.match(r'^\s*([가-힣]{2,8})', text)
+            if m:
+                name = m.group(1)
+                if name not in ['아파트', '반경', '근처', '거리', '주변']:
+                    facilities.append(name)
+                    print(f"   🔥 첫 단어 추출: {name}")
+
         return facilities if facilities else None
 
+    # -------------------- 메인 파서 --------------------
     def parse(self, text: str):
         print("🔍 입력 텍스트:", text)
 
         distance = self._extract_distance(text)
         print(f"   ➤ 추출된 거리: {distance}")
+
+        count = self._extract_count(text)
 
         extracted_names = self._extract_facility_names(text)
         print(f"   ➤ 추출된 시설명 후보: {extracted_names}")
@@ -96,8 +138,12 @@ class LLMParser:
         for name in extracted_names:
             fac = self.rag.search_facility_best_match(name)
             if fac:
+                # search_facility_best_match가 실패 시 None 또는 error dict를 반환할 수 있음
+                if isinstance(fac, dict) and fac.get("facility_found") is False:
+                    continue
                 facilities.append(fac)
 
+        # 하나도 못 찾았을 때
         if len(facilities) == 0:
             return {
                 "error": "NOT_FOUND",
@@ -105,6 +151,7 @@ class LLMParser:
                 "allowed_categories": self.rag.ALLOWED_CATEGORIES
             }
 
+        # BETWEEN 모드
         if len(facilities) >= 2 and is_between:
             if distance is None:
                 distance = self.rag._get_default_radius(facilities[0]["category"])
@@ -112,9 +159,11 @@ class LLMParser:
             return {
                 "mode": "BETWEEN",
                 "facilities": facilities,
-                "distance_max": distance
+                "distance_max": distance,
+                "limit": count
             }
 
+        # SINGLE 모드
         facility = facilities[0]
 
         if distance is None:
@@ -127,5 +176,6 @@ class LLMParser:
             "facility_lat": facility["lat"],
             "facility_lng": facility["lng"],
             "facility_category": facility["category"],
-            "distance_max": distance
+            "distance_max": distance,
+            "limit": count
         }

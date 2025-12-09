@@ -36,7 +36,7 @@ export default function Home() {
         <div className="bg-white p-8 rounded-2xl shadow hover:shadow-md transition border">
           <h3 className="text-xl font-semibold mb-3">📌 자연어 분석</h3>
           <p className="text-gray-600 text-sm leading-relaxed">
-            “학교 가까운 신축 아파트 추천해줘”  
+            “학교 반경 500m 이내 아파트를 추천해줘”  
             같은 문장을 AI가 자동으로 조건으로 변환합니다.
           </p>
         </div>
@@ -45,7 +45,7 @@ export default function Home() {
         <div className="bg-white p-8 rounded-2xl shadow hover:shadow-md transition border">
           <h3 className="text-xl font-semibold mb-3">🏠 맞춤형 추천</h3>
           <p className="text-gray-600 text-sm leading-relaxed">
-            교육·교통·편의시설·가격을 종합 분석해  
+            교육·의료·편의시설 등을 종합 분석해  
             최적의 아파트를 추천합니다.
           </p>
         </div>
@@ -55,7 +55,7 @@ export default function Home() {
           <h3 className="text-xl font-semibold mb-3">🔍 RAG 기반 분석</h3>
           <p className="text-gray-600 text-sm leading-relaxed">
             구리시 데이터 800+개 시설 정보를  
-            벡터DB 기반으로 정확하게 검색합니다.
+            벡터DB 기반으로 검색합니다.
           </p>
         </div>
 
