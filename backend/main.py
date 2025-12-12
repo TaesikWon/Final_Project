@@ -161,6 +161,17 @@ def recommend_api(req: AskRequest):
 
     # 3) 실제 검색 (RAG)
     if mode == "BETWEEN":
+        facilities = parsed["facilities"]
+        
+        # 안전하게 2개만 사용
+        if len(facilities) < 2:
+            error_msg = "두 개의 시설이 필요합니다."
+            chat_memory.save_turn(user_question, error_msg)
+            return {"ok": False, "error": error_msg, "result": []}
+        
+        f1 = facilities[0]
+        f2 = facilities[1]
+        
         apartments = rag.search_apartments_hybrid(
             parsed=parsed,
             radius=parsed.get("distance_max"),
@@ -168,8 +179,12 @@ def recommend_api(req: AskRequest):
             limit=limit,
         )
 
-        f1, f2 = parsed["facilities"]
-        facility_info = {"mode": "between", "f1": f1, "f2": f2}
+        # 실제 시설의 정식 명칭 사용
+        facility_info = {
+            "mode": "between", 
+            "f1": f1["name"],  # dict에서 name 꺼내기
+            "f2": f2["name"]   # dict에서 name 꺼내기
+        }
 
     else:
         facility_name = parsed["facility_name"]
@@ -188,8 +203,9 @@ def recommend_api(req: AskRequest):
             facility_detail.get("address", "주소 없음") if facility_detail else "주소 없음"
         )
 
+        # 실제 시설의 정식 명칭 사용
         facility_info = {
-            "facility_name": facility_name,
+            "facility_name": facility_detail.get("name", facility_name) if facility_detail else facility_name,
             "category": parsed["facility_category"],
             "address": address,
             "radius": radius,

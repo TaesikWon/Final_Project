@@ -28,7 +28,7 @@ from kobert_transformers import get_tokenizer, get_kobert_model
 
 
 # =============================================================
-# ?�경 변??
+# 환경 변수 로드
 # =============================================================
 load_dotenv()
 
@@ -37,7 +37,7 @@ claude_client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 # =============================================================
-# ?�스???�이??로드
+# 테스트 데이터 로드
 # =============================================================
 TEST_PATH = "backend/data/all_test.csv"
 test_df = pd.read_csv(TEST_PATH)
@@ -57,7 +57,7 @@ class FacilityDataset(Dataset):
         self.tokenizer = tokenizer
         self.max_len = max_len
 
-    def __len__(self): 
+    def __len__(self):
         return len(self.texts)
 
     def __getitem__(self, idx):
@@ -74,7 +74,7 @@ class FacilityDataset(Dataset):
 
 
 # =============================================================
-# 분류 모델 ?��? (HuggingFace)
+# HuggingFace 모델 평가 함수
 # =============================================================
 def evaluate_hf(model, loader, device):
     model.eval()
@@ -97,7 +97,7 @@ def evaluate_hf(model, loader, device):
 
 
 # =============================================================
-# KoBERT ?��?
+# KoBERT 평가 함수
 # =============================================================
 def evaluate_kobert(bert, classifier, loader, device):
     bert.eval()
@@ -123,12 +123,12 @@ def evaluate_kobert(bert, classifier, loader, device):
 
 
 # =============================================================
-# LLM ?��?
+# LLM 평가
 # =============================================================
 LLM_QUESTIONS = [
-    "구리??근처 5???�하 ?�파??추천?�줘",
-    "초등?�교 가까운 ?�파???�려�?,
-    "조용?�고 ?��?가 많�? ?�파??추천?�줘"
+    "구리시 근처 5억 이하 아파트 추천해줘.",
+    "초등학교 가까운 아파트 알려줘.",
+    "조용하고 공원이 많은 아파트 추천해줘."
 ]
 
 REQUIRED_KEYS = {"budget", "location", "conditions"}
@@ -153,12 +153,11 @@ def call_llm(model_name, question):
 
         if model_name == "Claude-3":
             res = claude_client.messages.create(
-                model="claude-sonnet-4-5-20250929",
+                model="claude-3-sonnet-20250214",
                 max_tokens=200,
                 messages=[{"role": "user", "content": question}],
             )
             return extract_json(res.content[0].text)
-
 
     except Exception as e:
         print(f"[LLM ERROR] {model_name}: {e}")
@@ -170,7 +169,7 @@ def evaluate_llm(model_name):
     speeds = []
     outputs = []
 
-    print(f"\n??{model_name} ?��? ?�작")
+    print(f"\n=== {model_name} LLM 평가 시작 ===\n")
 
     for q in LLM_QUESTIONS:
         start = time.time()
@@ -198,20 +197,20 @@ def evaluate_llm(model_name):
 
 
 # =============================================================
-# ?�체 ?��? ?�행
+# 전체 평가 실행
 # =============================================================
 def main():
     print("\n=======================================")
-    print("?�� ?�체 모델 ?�합 ?��? ?�작")
+    print("⭐ 전체 모델 통합 평가 시작 ⭐")
     print("=======================================\n")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     CLASSIFIER_RESULTS = {}
 
     # ---------------------------------------------------------
-    # 1) ELECTRA ??FIXED num_labels mismatch
+    # 1) ELECTRA
     # ---------------------------------------------------------
-    print("\n============ ELECTRA ?��? ============\n")
+    print("\n============ ELECTRA 평가 ============\n")
 
     ele_tok = AutoTokenizer.from_pretrained("monologg/koelectra-small-v3-discriminator")
     ele_loader = DataLoader(FacilityDataset(test_df, ele_tok, label2id), batch_size=16)
@@ -239,11 +238,10 @@ def main():
 
     print(classification_report(ele_trues, ele_preds, target_names=label_list))
 
-
     # ---------------------------------------------------------
-    # 2) KLUE RoBERTa
+    # 2) KLUE-RoBERTa
     # ---------------------------------------------------------
-    print("\n============ KLUE ?��? ============\n")
+    print("\n============ KLUE-RoBERTa 평가 ============\n")
 
     klu_tok = AutoTokenizer.from_pretrained("klue/roberta-small")
     klu_loader = DataLoader(FacilityDataset(test_df, klu_tok, label2id), batch_size=16)
@@ -270,11 +268,10 @@ def main():
 
     print(classification_report(klu_trues, klu_preds, target_names=label_list))
 
-
     # ---------------------------------------------------------
     # 3) KoBERT
     # ---------------------------------------------------------
-    print("\n============ KoBERT ?��? ============\n")
+    print("\n============ KoBERT 평가 ============\n")
 
     kob_tok = get_tokenizer()
     kob_loader = DataLoader(FacilityDataset(test_df, kob_tok, label2id), batch_size=16)
@@ -299,26 +296,24 @@ def main():
 
     print(classification_report(kob_trues, kob_preds, target_names=label_list))
 
-
     # ---------------------------------------------------------
-    # ?�능 비교??
+    # 성능 비교
     # ---------------------------------------------------------
     print("\n==============================")
-    print("?�� 모델 ?�능 비교??(Accuracy / F1)")
+    print("📊 모델별 성능 비교 (Accuracy / F1)")
     print("==============================\n")
 
     df = pd.DataFrame(CLASSIFIER_RESULTS).T
     print(df)
 
     best_model = df.sort_values("f1", ascending=False).index[0]
-    print(f"\n?�� 최종 ?�택??모델: {best_model} (F1-score 기�?)")
-
+    print(f"\n⭐ 최종 선택 모델: {best_model} (F1-score 기준)")
 
     # ---------------------------------------------------------
-    # LLM JSON ?�서 ?��?
+    # LLM JSON 파싱 평가
     # ---------------------------------------------------------
     print("\n==============================")
-    print("?�� LLM JSON ?�서 ?��?")
+    print("🤖 LLM JSON 파싱 능력 평가")
     print("==============================\n")
 
     gpt_res = evaluate_llm("gpt-4.1-mini")
@@ -327,7 +322,7 @@ def main():
     llm_df = pd.DataFrame([gpt_res, claude_res])
     print(llm_df)
 
-    print("\n?�� ?�체 ?��? ?�료!")
+    print("\n🎉 전체 평가 완료!")
 
 
 if __name__ == "__main__":

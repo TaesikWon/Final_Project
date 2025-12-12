@@ -59,7 +59,7 @@ export default function Recommend() {
         <div className="bg-white border rounded-xl p-6 shadow">
           <input
             className="w-full border rounded px-4 py-3 mb-4"
-            placeholder="예: 구리고 반경 500m 내 아파트 추천해줘"
+            placeholder="예: 구리고등학교 반경 500m 내 아파트 추천해줘"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && askServer()}

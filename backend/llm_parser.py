@@ -151,14 +151,24 @@ class LLMParser:
                 "allowed_categories": self.rag.ALLOWED_CATEGORIES
             }
 
-        # BETWEEN 모드
+        # BETWEEN 모드 (중복 제거 추가)
         if len(facilities) >= 2 and is_between:
             if distance is None:
                 distance = self.rag._get_default_radius(facilities[0]["category"])
 
+            # 중복 제거: 같은 이름의 시설이 2개 이상이면 첫 2개만 사용
+            unique_facilities = []
+            seen_names = set()
+            for fac in facilities:
+                if fac["name"] not in seen_names:
+                    unique_facilities.append(fac)
+                    seen_names.add(fac["name"])
+                if len(unique_facilities) >= 2:
+                    break
+
             return {
                 "mode": "BETWEEN",
-                "facilities": facilities,
+                "facilities": unique_facilities[:2],  # 처음 2개만
                 "distance_max": distance,
                 "limit": count
             }

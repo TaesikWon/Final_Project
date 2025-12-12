@@ -1,3 +1,4 @@
+# backend/scripts/train/train_electra.py
 import os
 import torch
 import torch.nn as nn
@@ -84,7 +85,7 @@ def predict_all(model, loader, device):
             preds = logits.argmax(dim=1)
 
             preds_list.extend(preds.cpu().numpy())
-            true_list.extend(batch["labels"].detach().cpu().numpy())   # ?àÏ†Ñ Î≤ÑÏ†Ñ
+            true_list.extend(batch["labels"].detach().cpu().numpy())   # ?ÔøΩÏ†Ñ Î≤ÑÏ†Ñ
 
     return true_list, preds_list
 
@@ -93,7 +94,7 @@ def predict_all(model, loader, device):
 # Train
 # ==========================================
 def train():
-    print("?ìå Loading datasets...")
+    print("?ÔøΩÔøΩ Loading datasets...")
 
     train_df = pd.read_csv(TRAIN_PATH)
     val_df = pd.read_csv(VAL_PATH)
@@ -103,7 +104,7 @@ def train():
     label2id = {label: i for i, label in enumerate(label_list)}
     num_labels = len(label_list)
 
-    print("?îñ LABELS:", label_list)
+    print("?ÔøΩÔøΩ LABELS:", label_list)
 
     tokenizer = AutoTokenizer.from_pretrained("monologg/koelectra-small-v3-discriminator")
 
@@ -119,7 +120,7 @@ def train():
         num_labels=num_labels
     ).to(device)
 
-    optimizer = optim.Adam(model.parameters(), lr=3e-5)   # ?ΩÍ∞Ñ ?ÅÌñ•(?±Îä•??
+    optimizer = optim.Adam(model.parameters(), lr=3e-5)   # ?ÔøΩÍ∞Ñ ?ÔøΩÌñ•(?ÔøΩÎä•??
 
     EPOCHS = 3
     for epoch in range(EPOCHS):
@@ -147,14 +148,14 @@ def train():
     torch.save(model.state_dict(), SAVE_PATH)
 
     test_acc = evaluate(model, test_loader, device)
-    print("\n?éâ ELECTRA Training Completed!")
-    print(f"?ìà Test Accuracy: {test_acc:.4f}")
+    print("\n?ÔøΩÔøΩ ELECTRA Training Completed!")
+    print(f"?ÔøΩÔøΩ Test Accuracy: {test_acc:.4f}")
 
     y_true, y_pred = predict_all(model, test_loader, device)
-    print("\n?ìä Detailed Test Report (Precision / Recall / F1-score)")
+    print("\n?ÔøΩÔøΩ Detailed Test Report (Precision / Recall / F1-score)")
     print(classification_report(y_true, y_pred, target_names=label_list))
 
-    print(f"?íæ Saved ??{SAVE_PATH}")
+    print(f"?ÔøΩÔøΩ Saved ??{SAVE_PATH}")
 
 
 if __name__ == "__main__":
